@@ -44,6 +44,10 @@ setup-python:
     echo "Installing Python dependencies..."
     {{ pip }} install --upgrade pip -q
     {{ pip }} install -r {{ backend_dir }}/requirements.txt
+    # LuxTTS/Zipvoice pins transformers<=4.57.6; qwen-tts pins transformers==4.57.3
+    # Both conflict with pip's free resolution — install all three --no-deps
+    {{ pip }} install --no-deps git+https://github.com/ysharma3501/LinaCodec.git
+    {{ pip }} install --no-deps git+https://github.com/ysharma3501/LuxTTS.git
     # Chatterbox pins numpy<1.26 / torch==2.6 which break on Python 3.12+
     {{ pip }} install --no-deps chatterbox-tts
     # HumeAI TADA pins torch>=2.7,<2.8 which conflicts with our torch>=2.1
@@ -53,7 +57,8 @@ setup-python:
         echo "Detected Apple Silicon — installing MLX dependencies..."
         {{ pip }} install -r {{ backend_dir }}/requirements-mlx.txt
     fi
-    {{ pip }} install git+https://github.com/QwenLM/Qwen3-TTS.git
+    # qwen-tts pins transformers==4.57.3 and accelerate==1.12.0 — install --no-deps
+    {{ pip }} install --no-deps git+https://github.com/QwenLM/Qwen3-TTS.git
     {{ pip }} install pyinstaller ruff pytest pytest-asyncio -q
     echo "Python environment ready."
 
@@ -87,9 +92,14 @@ setup-python:
         Write-Host "  pip install intel-extension-for-pytorch --index-url https://download.pytorch.org/whl/xpu"; \
     }
     & "{{ pip }}" install -r {{ backend_dir }}/requirements.txt
+    # LuxTTS/Zipvoice pins transformers<=4.57.6; qwen-tts pins transformers==4.57.3
+    # Both conflict with pip's free resolution — install all three --no-deps
+    & "{{ pip }}" install --no-deps git+https://github.com/ysharma3501/LinaCodec.git
+    & "{{ pip }}" install --no-deps git+https://github.com/ysharma3501/LuxTTS.git
     & "{{ pip }}" install --no-deps chatterbox-tts
     & "{{ pip }}" install --no-deps hume-tada
-    & "{{ pip }}" install git+https://github.com/QwenLM/Qwen3-TTS.git
+    # qwen-tts pins transformers==4.57.3 and accelerate==1.12.0 — install --no-deps
+    & "{{ pip }}" install --no-deps git+https://github.com/QwenLM/Qwen3-TTS.git
     & "{{ pip }}" install pyinstaller ruff pytest pytest-asyncio -q
     Write-Host "Python environment ready."
 
@@ -110,7 +120,7 @@ dev: _ensure-venv _ensure-sidecar
         echo "Backend already running on http://localhost:17493"
     else
         echo "Starting backend on http://localhost:17493 ..."
-        {{ venv_bin }}/uvicorn backend.main:app --reload --port 17493 &
+        {{ venv_bin }}/uvicorn backend.main:app --reload --reload-dir backend --port 17493 &
         backend_pid=$!
         sleep 2
     fi
@@ -125,7 +135,7 @@ dev: _ensure-venv _ensure-sidecar
     $backendJob = $null; \
     try { $null = Invoke-WebRequest -Uri "http://127.0.0.1:17493/health" -UseBasicParsing -TimeoutSec 2 -ErrorAction Stop; Write-Host "Backend already running on http://localhost:17493" } catch { \
         Write-Host "Starting backend on http://localhost:17493 ..."; \
-        $backendJob = Start-Process -PassThru -NoNewWindow -FilePath "{{ python }}" -ArgumentList "-m","uvicorn","backend.main:app","--reload","--port","17493"; \
+        $backendJob = Start-Process -PassThru -NoNewWindow -FilePath "{{ python }}" -ArgumentList "-m","uvicorn","backend.main:app","--reload","--reload-dir","backend","--port","17493"; \
         Start-Sleep -Seconds 2; \
     }; \
     Write-Host "Starting Tauri desktop app..."; \
@@ -134,11 +144,11 @@ dev: _ensure-venv _ensure-sidecar
 # Start backend only
 [unix]
 dev-backend: _ensure-venv
-    {{ venv_bin }}/uvicorn backend.main:app --reload --port 17493
+    {{ venv_bin }}/uvicorn backend.main:app --reload --reload-dir backend --port 17493
 
 [windows]
 dev-backend: _ensure-venv
-    & "{{ python }}" -m uvicorn backend.main:app --reload --port 17493
+    & "{{ python }}" -m uvicorn backend.main:app --reload --reload-dir backend --port 17493
 
 # Start Tauri desktop app only (backend must be running separately)
 [unix]
@@ -160,7 +170,7 @@ dev-web: _ensure-venv
         echo "Backend already running on http://localhost:17493"
     else
         echo "Starting backend on http://localhost:17493 ..."
-        {{ venv_bin }}/uvicorn backend.main:app --reload --port 17493 &
+        {{ venv_bin }}/uvicorn backend.main:app --reload --reload-dir backend --port 17493 &
         backend_pid=$!
         sleep 2
     fi
@@ -174,7 +184,7 @@ dev-web: _ensure-venv
     $backendJob = $null; \
     try { $null = Invoke-WebRequest -Uri "http://127.0.0.1:17493/health" -UseBasicParsing -TimeoutSec 2 -ErrorAction Stop; Write-Host "Backend already running on http://localhost:17493" } catch { \
         Write-Host "Starting backend on http://localhost:17493 ..."; \
-        $backendJob = Start-Process -PassThru -NoNewWindow -FilePath "{{ python }}" -ArgumentList "-m","uvicorn","backend.main:app","--reload","--port","17493"; \
+        $backendJob = Start-Process -PassThru -NoNewWindow -FilePath "{{ python }}" -ArgumentList "-m","uvicorn","backend.main:app","--reload","--reload-dir","backend","--port","17493"; \
         Start-Sleep -Seconds 2; \
     }; \
     Write-Host "Starting web app..."; \

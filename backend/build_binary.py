@@ -295,6 +295,24 @@ def build_server(cuda=False):
             "unidic_lite",
             "--hidden-import",
             "loguru",
+            # OmniVoice — massively multilingual zero-shot voice cloning.
+            # collect-all is required because omnivoice.utils submodules (lang_map.py,
+            # voice_design.py, text.py, duration.py) are imported at runtime and
+            # contain data structures not resolvable from bytecode alone.
+            # copy-metadata is required because omnivoice/__init__.py calls
+            # importlib.metadata.version("omnivoice") at import time.
+            "--hidden-import",
+            "backend.backends.omnivoice_backend",
+            "--hidden-import",
+            "omnivoice",
+            "--collect-all",
+            "omnivoice",
+            "--copy-metadata",
+            "omnivoice",
+            # pydub is used by omnivoice.utils.audio for silence detection.
+            # It ships no data files so --hidden-import alone suffices.
+            "--hidden-import",
+            "pydub",
             # MCP server — Streamable-HTTP endpoint and the 4 voicebox.* tools.
             # FastMCP pulls in a chain of deps (mcp, cyclopts, openapi-pydantic,
             # etc.) that don't auto-discover cleanly under PyInstaller, so we
@@ -528,6 +546,8 @@ def build_shim():
         "tada",
         "--exclude-module",
         "kokoro",
+        "--exclude-module",
+        "omnivoice",
         "--exclude-module",
         "misaki",
         "--exclude-module",

@@ -27,6 +27,7 @@ const generationSchema = z.object({
       'chatterbox_turbo',
       'tada',
       'kokoro',
+      'omnivoice',
     ])
     .optional(),
   personality: z.boolean().optional(),
@@ -66,7 +67,7 @@ export function useGenerationForm(options: UseGenerationFormOptions = {}) {
       seed: undefined,
       modelSize: '1.7B',
       instruct: '',
-      engine: (selectedEngine as GenerationFormValues['engine']) || 'qwen',
+      engine: (selectedEngine as GenerationFormValues['engine']) || 'omnivoice',
       personality: false,
       ...options.defaultValues,
     },
@@ -86,7 +87,7 @@ export function useGenerationForm(options: UseGenerationFormOptions = {}) {
     }
 
     try {
-      const engine = data.engine || 'qwen';
+      const engine = data.engine || 'omnivoice';
       const modelName =
         engine === 'luxtts'
           ? 'luxtts'
@@ -100,9 +101,11 @@ export function useGenerationForm(options: UseGenerationFormOptions = {}) {
                   : 'tada-1b'
                 : engine === 'kokoro'
                   ? 'kokoro'
-                  : engine === 'qwen_custom_voice'
-                    ? `qwen-custom-voice-${data.modelSize}`
-                    : `qwen-tts-${data.modelSize}`;
+                  : engine === 'omnivoice'
+                    ? 'omnivoice'
+                    : engine === 'qwen_custom_voice'
+                      ? `qwen-custom-voice-${data.modelSize}`
+                      : `qwen-tts-${data.modelSize}`;
       const displayName =
         engine === 'luxtts'
           ? 'LuxTTS'
@@ -116,13 +119,15 @@ export function useGenerationForm(options: UseGenerationFormOptions = {}) {
                   : 'TADA 1B'
                 : engine === 'kokoro'
                   ? 'Kokoro 82M'
-                  : engine === 'qwen_custom_voice'
-                    ? data.modelSize === '1.7B'
-                      ? 'Qwen CustomVoice 1.7B'
-                      : 'Qwen CustomVoice 0.6B'
-                    : data.modelSize === '1.7B'
-                      ? 'Qwen TTS 1.7B'
-                      : 'Qwen TTS 0.6B';
+                  : engine === 'omnivoice'
+                    ? 'OmniVoice'
+                    : engine === 'qwen_custom_voice'
+                      ? data.modelSize === '1.7B'
+                        ? 'Qwen CustomVoice 1.7B'
+                        : 'Qwen CustomVoice 0.6B'
+                      : data.modelSize === '1.7B'
+                        ? 'Qwen TTS 1.7B'
+                        : 'Qwen TTS 0.6B';
 
       // Check if model needs downloading
       try {

@@ -50,7 +50,7 @@ def _get_or_create_import_profile(db: Session) -> DBVoiceProfile:
 
 
 def _resolve_generation_engine(data: models.GenerationRequest, profile) -> str:
-    return data.engine or getattr(profile, "default_engine", None) or getattr(profile, "preset_engine", None) or "qwen"
+    return data.engine or getattr(profile, "default_engine", None) or getattr(profile, "preset_engine", None) or "omnivoice"
 
 
 @router.post("/generate", response_model=models.GenerationResponse)
