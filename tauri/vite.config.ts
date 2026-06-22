@@ -27,7 +27,8 @@ export default defineConfig({
     strictPort: true,
     // Watch files in the app directory for changes
     watch: {
-      ignored: ['!**/../app/**'],
+      // Only exclude Rust build output to prevent EBUSY errors on Windows.
+      ignored: ['**/src-tauri/target/**'],
     },
   },
   envPrefix: ['VITE_', 'TAURI_'],
