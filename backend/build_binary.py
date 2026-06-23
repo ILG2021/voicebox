@@ -22,12 +22,16 @@ def is_apple_silicon():
     return platform.system() == "Darwin" and platform.machine() == "arm64"
 
 
-def build_server(cuda=False):
+def build_server(cuda=False, clean=False, jobs=None):
     """Build Python server as standalone binary.
 
     Args:
         cuda: If True, build with CUDA support and name the binary
               voicebox-server-cuda instead of voicebox-server.
+        clean: If True, wipe PyInstaller's build cache before building.
+               Omit for fast incremental rebuilds (huge speedup on repeat builds).
+        jobs: Number of parallel analysis workers (PyInstaller 6+).
+              None means use PyInstaller's default heuristic.
     """
     backend_dir = Path(__file__).parent
 
@@ -430,9 +434,20 @@ def build_server(cuda=False):
             "--workpath",
             build_dir,
             "--noconfirm",
-            "--clean",
         ]
     )
+
+    # --clean: wipe PyInstaller's analysis cache before building.
+    # Off by default — omitting it gives a huge speedup on repeated builds
+    # because PyInstaller reuses the cached .toc / .pyz files in build/.
+    # Pass --clean only when deps have actually changed (new packages,
+    # version upgrades, or after a broken partial build).
+    if clean:
+        args.append("--clean")
+
+    # --jobs: parallel module analysis (PyInstaller 6+).
+    if jobs and jobs > 1:
+        args.extend(["--jobs", str(jobs)])
 
     # Change to backend directory
     os.chdir(backend_dir)
@@ -602,8 +617,24 @@ if __name__ == "__main__":
         action="store_true",
         help="Build the voicebox-mcp stdio shim binary instead of the server",
     )
+    parser.add_argument(
+        "--clean",
+        action="store_true",
+        help=(
+            "Wipe PyInstaller build cache before building (slower but safe). "
+            "Use after adding/removing packages or after a broken build. "
+            "Omit for fast incremental rebuilds."
+        ),
+    )
+    parser.add_argument(
+        "--jobs",
+        type=int,
+        default=None,
+        metavar="N",
+        help="Number of parallel analysis workers (PyInstaller 6+). Defaults to PyInstaller's own heuristic.",
+    )
     cli_args = parser.parse_args()
     if cli_args.shim:
         build_shim()
     else:
-        build_server(cuda=cli_args.cuda)
+        build_server(cuda=cli_args.cuda, clean=cli_args.clean, jobs=cli_args.jobs)

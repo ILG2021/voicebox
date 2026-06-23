@@ -112,23 +112,28 @@ class OmniVoiceBackend:
             import torch
             from omnivoice import OmniVoice
 
-            # Map device string to device_map format expected by from_pretrained
-            if device == "cuda":
-                device_map = "cuda:0"
-            elif device == "xpu":
-                device_map = "xpu:0"
-            else:
-                device_map = "cpu"
-
             # Use float16 on GPU for efficiency; float32 on CPU (float16 on CPU
-            # is not well-supported on all platforms)
+            # is not well-supported on all platforms).
             dtype = torch.float16 if device != "cpu" else torch.float32
 
-            model = OmniVoice.from_pretrained(
-                OMNIVOICE_HF_REPO,
-                device_map=device_map,
-                dtype=dtype,
-            )
+            # NOTE: We deliberately do NOT pass device_map or dtype to from_pretrained.
+            #
+            # When device_map is set, transformers activates init_empty_weights()
+            # which moves parameter initialization to the "meta" device and routes
+            # all tensor ops through torch.overrides.__torch_function__ dispatch.
+            # Under PyInstaller, this path reaches torch._refs.normal_ →
+            # torch._prims_common.wrappers._fn, which raises:
+            #
+            #   AssertionError: Unexpected result type: <class 'int'>,
+            #   is_tensor=True, out_names=('out',)
+            #
+            # This is the same class of frozen-module bug as the torch._numpy._ufuncs
+            # NameError (module-level `for name in ...` loops that fail under the
+            # frozen importer). Loading without device_map uses the standard eager-init
+            # path (normal CPU allocation → weight init) which is safe in frozen builds.
+            # We then move the fully-initialised model to the target device/dtype.
+            model = OmniVoice.from_pretrained(OMNIVOICE_HF_REPO)
+            model = model.to(device=device, dtype=dtype)
             model.eval()
 
             self.model = model
